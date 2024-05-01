@@ -43,7 +43,8 @@ class AntaParser:
                     self.anta_pages_new.append(is_correct)
                 else:
                     if is_correct == "val":
-                        pass
+                        sys.stdout.write("\n https://github.com/val-era/Anta_Sport_Parser (Check README.md")
+                        sys.stdout.flush()
                     else:
                         sys.stdout.write("[-] Проверьте ссылку на корректность. Формат ссылки [https://anta-sport.ru/new]")
                         sys.stdout.flush()
