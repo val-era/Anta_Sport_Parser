@@ -54,3 +54,5 @@ soup = BeautifulSoup(responce, "html.parser")
 ~~~
 
 ![image](https://github.com/val-era/Anta_Sport_Parser/assets/115217591/ebc25951-db4c-41fb-86da-1a56bec0e096)
+
+@VAL_ERA
