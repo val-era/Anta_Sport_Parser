@@ -116,24 +116,26 @@ class AntaHrefs:
 
         soup = BeautifulSoup(connect.text, "html.parser")
 
-        """Вычисляем артикул с товара"""
         try:
-            descriptions = soup.find("div", class_="product-description-section")
-            txt = descriptions.text
-            art = re.search('Артикул: (.+?)\n', txt)
+            """Вычисляем артикул с товара"""
+            new_art = soup.find("div", class_="product-code")
+            txt = new_art.text
+            art = txt.replace("Артикул: ","")
             if art:
-                self.art_name_var = art.group(1)
+                self.art_name_var = art
             else:
                 self.art_name_var = href
 
             """Описания"""
+            descriptions = soup.find("div", class_="product-description-section")
+            txt = descriptions.text
             text = txt.replace("\n", "").replace("\t", "").split(" ")
             description = []
             is_art = False
             is_sost = False
             for i in text:
                 if is_art == False:
-                    if i.startswith(art.group(1)):
+                    if i.startswith(art):
                         is_art = True
                 else:
                     try:
