@@ -11,15 +11,19 @@ class AntaHrefs:
     def __init__(self):
         self.href_list = []
 
+        self.scraper = cloudscraper.create_scraper(browser={
+            'custom': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299',
+        }, )
+
         self.time_sleep = 1
 
         self.pages = [
-            "https://anta-sport.ru/new",
-            "https://anta-sport.ru/cat/muzhskaya-odezhda",
-            "https://anta-sport.ru/cat/zhenskoe",
-            "https://anta-sport.ru/cat/aksessuary",
-            "https://anta-sport.ru/cat/deti",
-            "https://anta-sport.ru/discount"
+            'https://anta-sport.ru/cat/outlet',
+            'https://anta-sport.ru/cat/new',
+            'https://anta-sport.ru/cat/muzhskaya-odezhda',
+            'https://anta-sport.ru/cat/zhenskoe',
+            'https://anta-sport.ru/cat/aksessuary',
+            'https://anta-sport.ru/cat/deti',
         ]
 
         self.article_name = []
@@ -52,7 +56,7 @@ class AntaHrefs:
     def get_hrefs(self, page):
         try:
             soup = BeautifulSoup(page.text, "html.parser")
-            product_cards = soup.find_all("a", class_="js-product-link")
+            product_cards = soup.find_all("a", class_="fast-view-btn js-product-link")
             if product_cards:
                 for card in product_cards:
                     href = "https://anta-sport.ru" + card["href"]
@@ -64,7 +68,9 @@ class AntaHrefs:
         except:
             pass
 
-    def get_card_info(self):
+    def get_card_info(self, href=None):
+        if href != None:
+            self.href_list = [href]
         lenght = len(self.href_list)
         number_href = 0
 
@@ -73,9 +79,6 @@ class AntaHrefs:
             errors = 0
             while errors != 3:
                 try:
-                    self.scraper = cloudscraper.create_scraper(browser={
-                                                                'custom': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16299',
-                                                            },)
                     time.sleep(self.time_sleep)
                     connect = self.scraper.get(href)
                     time.sleep(self.time_sleep)
@@ -97,8 +100,12 @@ class AntaHrefs:
 
         df = pd.DataFrame({
             "art.n": self.article_name,
-            "descriptions": self.descriptions,
+            "img": self.base_img,
+            "model": self.model_name,
+            "RRP": self.rrp,
             "discount": self.discount,
+            "description": self.description_info,
+            "description_var": self.descriptions,
             "visibles": self.visible,
         })
         df.to_excel('art1.xlsx')
@@ -109,10 +116,14 @@ class AntaHrefs:
         df_err.to_excel('Error.xlsx')
 
     def get_card_information(self, connect, href):
-        self.art_name_var = "None"
-        self.descr_var = "None"
-        self.disc_var = "None"
-        self.visible_var = "None"
+        self.art_name_var = None
+        self.description_info = None
+        self.descr_var = None
+        self.rrp = None
+        self.disc_var = None
+        self.visible_var = None
+        self.base_img = None
+        self.model_name = None
 
         soup = BeautifulSoup(connect.text, "html.parser")
 
@@ -121,53 +132,59 @@ class AntaHrefs:
             new_art = soup.find("div", class_="product-code")
             txt = new_art.text
             art = txt.replace("Артикул: ","")
+            print(art)
             if art:
                 self.art_name_var = art
             else:
                 self.art_name_var = href
 
+
             """Описания"""
-            descriptions = soup.find("div", class_="product-description-section")
-            txt = descriptions.text
-            text = txt.replace("\n", "").replace("\t", "").split(" ")
-            description = []
-            is_art = False
-            is_sost = False
-            for i in text:
-                if is_art == False:
-                    if i.startswith(art):
-                        is_art = True
+            try:
+                descriptions = soup.find("div", class_="tabs-show-more-wrapper")
+                txt = descriptions.text
+                text = txt.replace("\n", "").replace("\t", "")
+                self.description_info = text
+                description = text.split(" ")
+                if len(description) > 5:
+                    self.descr_var = "Описание найдено"
                 else:
-                    try:
-                        if i == "":
-                            pass
-                        elif i.startswith("СОСТАВ") or i.startswith("Состав") or i.startswith("состав"):
-                            is_sost = True
-                        else:
-                            if is_sost == False:
-                                description.append(i)
-                    except:
-                        pass
-            if len(description) > 4:
-                self.descr_var = "Описание найдено"
-            else:
+                    self.descr_var = "Описание отсутствует"
+            except:
+                self.description_info = ""
                 self.descr_var = "Описание отсутствует"
 
-            """Скидка"""
 
-            discount = soup.find("span", class_="sale-badge")
+            """Скидка"""
+            discount = soup.find("span", class_="sale-badge js-sale-badge")
             if discount:
                 self.disc_var = discount.text
             else:
                 self.disc_var = "0%"
 
-            """Доступность карточки"""
 
-            button = soup.find(class_="btn btn-default buy-btn j-add-product")
+            """Доступность карточки"""
+            button = soup.find("a", class_="btn btn-default buy-btn j-add-product js-add-product")
             if button:
                 self.visible_var = button.text
             else:
                 self.visible_var = "Недоступно для заказа"
+
+
+            """Получаем РРЦ"""
+            if self.disc_var == "0%":
+                rrp_label = soup.find("span", class_="current_price js-current_price")
+            else:
+                rrp_label = soup.find("span", class_="old-price js-old-price")
+            rrp = rrp_label.text.replace(" ₽", "")
+            self.rrp = rrp
+
+            """Получаем наименование модели"""
+            name_label = soup.find("h1", itemprop="name")
+            self.model_name = name_label.text
+
+
+
         except:
             self.art_name_var=href
 
@@ -179,4 +196,5 @@ class AntaHrefs:
 
 if __name__ == "__main__":
     start = AntaHrefs()
-    start.connection()
+    #start.connection()
+    start.get_card_info('https://anta-sport.ru/product/krossovki-lifestyle-anta-millennium-td-3')
